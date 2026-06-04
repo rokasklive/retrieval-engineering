@@ -1,0 +1,120 @@
+{
+  "skill_name": "retrieval-pipeline-design",
+  "notes": "Evals for the retrieval-pipeline-design skill. Prompts are realistic user asks. Each eval has objectively-checkable assertions a grader can verify by reading the design artifact the agent produces. Evals 1-6 mirror the brief's six required scenarios (rewritten as natural user prompts). Evals 7-8 guard against the opposite failure: under-building a genuinely complex pipeline, and skipping failure triage. Run each prompt twice: once WITH the skill, once WITHOUT (baseline). Save outputs per the run protocol in the workspace README.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "small-corpus-lexical-enough",
+      "prompt": "I'm building search over our product catalog — about 5,000 items, each one a structured record with a SKU, name, category, price, and a one-line description. In practice users almost always search by the exact product code, like 'DQ4312-101'. I was assuming I'd need to embed everything, stand up a vector database, and add a reranker on top. What retrieval setup should I actually use here?",
+      "expected_output": "A design that recommends single-stage BM25/lexical search as sufficient, explicitly declines dense retrieval and a reranker as unnecessary for exact-identifier queries, notes chunking is not applicable to short structured records, and pushes back on the proposed embeddings+vector-DB+reranker as premature complexity with no symptom to justify it.",
+      "files": [],
+      "expectations": [
+        "Recommends single-stage BM25 / lexical retrieval as the primary and sufficient approach",
+        "Explicitly states that dense/vector retrieval is NOT needed for this use case",
+        "Explicitly states that a reranker is NOT needed for this use case",
+        "Notes that chunking is irrelevant or not applicable because records are short and structured",
+        "Justifies the choice by exact-identifier dominance in the query classes",
+        "Pushes back on the user's proposed embeddings + vector DB + reranker as unnecessary complexity"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "dense-only-with-exact-identifiers",
+      "prompt": "We're setting up search over our internal engineering docs and runbooks. The plan is to embed everything with OpenAI text-embedding-3-large and do pure vector similarity search in Pinecone. A lot of the queries are things like 'find error ERR_TIMEOUT in the logs' or 'what does the --no-verify flag do'. Does this plan hold up?",
+      "expected_output": "A response that flags pure dense retrieval as a poor fit for the exact-identifier queries present (error codes, flags), explains the cause (embedding models have no special representation for unseen identifiers), and requires adding a BM25/lexical leg (hybrid), ideally routing identifier-bearing queries to the lexical path.",
+      "files": [],
+      "expectations": [
+        "Flags that pure dense/vector search will fail on the exact-identifier queries (error codes, CLI flags)",
+        "Explains the cause: embedding models treat unseen identifiers as noise / exact-identifier blindness",
+        "Recommends adding a BM25 / lexical leg, i.e. hybrid retrieval rather than dense-only",
+        "References the complementarity of lexical and dense retrieval (they fail in opposite directions)"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "raw-score-fusion",
+      "prompt": "For our hybrid search we're planning to combine the BM25 score and the cosine similarity with a simple weighted sum — like 0.5*bm25 + 0.5*cosine — and sort by that combined number. Does that sound reasonable?",
+      "expected_output": "A response that flags score incompatibility between BM25 and cosine (different ranges and distributions, fragile to model upgrades), recommends RRF (k=60) as the rank-based default, and — if the user insists on score-level fusion — requires calibrated, monitored score distributions. Fusion-math detail is deferred to Hybrid Search Architecture.",
+      "files": [],
+      "expectations": [
+        "Flags that BM25 scores and cosine similarities are incompatible (different ranges/distributions)",
+        "Recommends Reciprocal Rank Fusion (RRF), ideally with k=60, as the default fusion method",
+        "Notes that score normalization is fragile and breaks on model upgrades / distribution shifts",
+        "States that score-level fusion is only acceptable with calibrated and monitored score distributions",
+        "Defers detailed fusion math to a specialized concern (e.g. references Hybrid Search Architecture)"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "reranker-without-recall-baseline",
+      "prompt": "Our search results aren't great, so we want to add a Cohere reranker on top of our existing vector search. We don't really have eval numbers yet, but a reranker should help quality, right? Planning to just drop it in.",
+      "expected_output": "A response that holds off on adding the reranker until first-stage recall is measured, explains that a reranker can only reorder candidates already retrieved (it cannot recover missing documents), requires checking whether the correct document is even in the candidate set (retrieval vs. reranking triage), and requires a baseline to measure the reranker's actual delta.",
+      "files": [],
+      "expectations": [
+        "Holds off on / does not endorse adding the reranker until first-stage recall is measured",
+        "Explains that a reranker cannot recover documents that are absent from the candidate pool",
+        "Requires measuring first-stage recall (is the correct document in the candidate set?) before adding the reranker",
+        "Distinguishes retrieval failure (doc not retrieved) from reranking failure (doc retrieved but mis-ranked)",
+        "Requires an evaluation baseline to measure the reranker's improvement"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "arbitrary-chunking-legal",
+      "prompt": "I'm designing RAG over a few thousand legal contracts. The plan is to chunk every document into fixed 512-token windows, embed them, and retrieve the top 10 for each query. Anything wrong with that approach?",
+      "expected_output": "A response that flags fixed-size/fixed-token chunking as a structural quality risk for legal documents (chunks split clauses and sections), treats chunking as the binding upstream constraint rather than silently accepting it, cross-references Chunking Strategy Design, and recommends structure-aware chunking with per-domain evaluation. May also flag top-10 retrieval as too narrow for legal and suggest generous retrieval + a reranker.",
+      "files": [],
+      "expectations": [
+        "Flags fixed-size / fixed-token chunking as a structural quality risk, especially for legal documents",
+        "Explains the risk that fixed chunks split clauses/sections mid-passage and degrade retrieval quality",
+        "Cross-references Chunking Strategy Design (or otherwise defers chunking strategy to a specialized concern)",
+        "Recommends structure-aware chunking and per-domain evaluation instead of accepting the fixed window",
+        "Treats chunking as an upstream constraint on all downstream quality rather than a minor detail"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "production-no-model-versioning",
+      "prompt": "We're about to ship our search to production. The vector table is basically (id, text, embedding) with 768-dimension embeddings from Cohere. Is this good to ship as-is?",
+      "expected_output": "A response that requires a non-nullable model_version column on the vector table, explains the rollback/migration risk without it (mixed-version indexes are geometrically meaningless and unrollbackable), requires a freshness policy and canary-query/drift monitoring, and cross-references Drift Management & Freshness for the operational implementation.",
+      "files": [],
+      "expectations": [
+        "Requires adding a model_version (or equivalent embedding-model identity) column to the vector table",
+        "Explains the migration/rollback risk: vectors from different models are incompatible and mixing them silently degrades quality",
+        "Requires a freshness policy (re-embedding triggers / staleness handling)",
+        "Requires canary queries or drift monitoring to catch silent quality decay",
+        "Cross-references Drift Management & Freshness (or otherwise defers operational drift handling)"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "complex-case-justified-build",
+      "prompt": "We're building search and RAG for a customer-support copilot. The corpus is around 2 million support articles and past tickets — mostly natural-language prose, but it also contains product names and error codes. Queries are full questions typed by support agents, and the retrieved results get fed into an LLM that drafts a reply. Our latency budget is roughly 800ms end to end. How should the retrieval pipeline look?",
+      "expected_output": "A design that, given mixed content (prose + identifiers) and an LLM consumer within a generous latency budget, justifies hybrid retrieval (lexical + dense) plus a reranker — explicitly separating recall-optimized candidate generation from precision-optimized reranking, retrieving generously to feed the reranker, requiring an evaluation baseline before committing to the full stack, and including production-readiness items. It should tie each stage to a need rather than dumping all layers, and flag the chunking assumption.",
+      "files": [],
+      "expectations": [
+        "Recommends hybrid retrieval (lexical + dense) given the mix of prose and exact identifiers",
+        "Recommends a reranker because results feed an LLM, and confirms it fits the ~800ms latency budget",
+        "Recommends generous first-stage retrieval (a wide top-K, e.g. ~75+) feeding the reranker",
+        "Explicitly separates candidate generation (recall) from reranking (precision) as distinct stage responsibilities",
+        "Requires an evaluation baseline / plan before committing to the full multi-stage pipeline",
+        "Includes production-readiness items (model versioning, freshness, or canary monitoring)",
+        "Flags chunking as an assumption/dependency rather than silently ignoring it"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "retrieval-vs-reranking-triage",
+      "prompt": "Our semantic search keeps returning the wrong document as the top result, even though I'm pretty sure the correct document is somewhere in the corpus. We've spent two weeks tuning the reranker and it hasn't helped. What's going on?",
+      "expected_output": "A response that diagnoses this as a triage problem: do a retrieval-position check first — is the correct document even in the candidate set? If it isn't in the top-K candidates, this is a retrieval failure that no amount of reranker tuning can fix; if it is present but mis-ranked, it's a reranking problem. Recommends measuring recall before further reranker work, and may flag a silently capped candidate window (e.g. inner LIMIT below ef_search).",
+      "files": [],
+      "expectations": [
+        "Recommends a retrieval-position check first: determine whether the correct document is in the candidate set at all",
+        "Distinguishes retrieval failure (doc not in candidate set) from reranking failure (doc present but mis-ranked)",
+        "Notes that tuning the reranker is futile if the document was never retrieved in the first place",
+        "Recommends measuring first-stage recall before any further reranker tuning",
+        "Considers a silently capped candidate window (e.g. inner LIMIT below the ANN search depth / ef_search) as a possible cause"
+      ]
+    }
+  ]
+}

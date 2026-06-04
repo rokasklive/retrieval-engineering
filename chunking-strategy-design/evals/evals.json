@@ -1,0 +1,119 @@
+{
+  "skill_name": "chunking-strategy-design",
+  "notes": "Evals for the chunking-strategy-design skill. Prompts are realistic user asks about HOW to chunk documents for a retrieval/RAG system (this skill's scope: boundary placement, size/overlap, structure- and script-aware splitting, chunk metadata, chunk-quality validation, chunking-failure diagnosis), not how to pick the embedding model/reranker, design fusion, or run the eval program (other skills). Evals 1-6 mirror the brief's six required test scenarios (section 11), rewritten as natural user prompts: (1) legal corpus -> structural-first/PGC, (2) product catalog -> attribute-aware, anti domain-generic, (3) CJK -> script-aware not token-count, (4) diagnose bad retrieval -> check chunks before swapping models, (5) quantization -> validate chunking first, (6) multi-hop -> parent-child metadata, defer pipeline. Evals 7-8 guard two other distinctive behaviors: (7) overlap is insurance not a cure -- inspect boundaries before bumping overlap, and (8) semantic-as-default rejection -- structural-first on a structured corpus. Each assertion is objectively checkable by a grader reading the design artifact. Run protocol: each prompt once WITH the skill, once WITHOUT (baseline) -- see RUN_PROTOCOL.md in the workspace.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "legal-corpus-structural-first",
+      "prompt": "We've got about 50,000 legal briefs we want to put behind RAG retrieval. They're well structured — each one goes Case Name, then Section, Subsection, down to numbered paragraphs. How should we chunk these?",
+      "expected_output": "Structural-first strategy: parse the heading hierarchy and subdivide by paragraph within sections (PGC for legal/structured content). Target ~512-768 tokens per paragraph group within the embedding model's optimal range. Heading-path metadata (Case -> Section -> Subsection) on every chunk. No semantic chunking unless evaluation proves structural insufficient. Fixed-character chunking explicitly rejected. Avoids defaulting to '512 tokens with 10% overlap' without structural parsing.",
+      "files": [],
+      "expectations": [
+        "Recommends structural-first chunking that parses the heading/section hierarchy rather than a fixed-size split",
+        "Identifies this as PGC (paragraph-group) territory because legal/structured arguments are organized in paragraph units",
+        "Puts heading-path metadata (Case/Section/Subsection) on every chunk",
+        "Explicitly rejects fixed-character chunking and does not default to semantic chunking on this structured corpus",
+        "Sets a target chunk size within the embedding model's optimal range (e.g. ~512-768 tokens) rather than an unjustified default",
+        "Warns against defaulting to a generic '512 tokens with 10% overlap' that ignores the available structure"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "product-catalog-attribute-aware",
+      "prompt": "Setting up search over our product catalog. Each listing has a SKU, a product name, a description paragraph, and a bunch of spec fields (dimensions, weight, material, etc). What's a good chunking approach here?",
+      "expected_output": "Attribute-aware structural chunking, NOT paragraph-group or a default 512-token blob. Concatenate SKU + name + description as the chunk text; preserve specification fields as structured metadata for filtering rather than prose to embed. Fixed-character chunking rejected. Notes explicitly that this is a different strategy than narrative or legal documents — domain determines the strategy.",
+      "files": [],
+      "expectations": [
+        "Recommends attribute-aware / field-aware structural chunking for the structured product listings",
+        "Concatenates the identifying text fields (SKU + name + description) as the chunk text",
+        "Preserves specification fields as structured metadata for filtering rather than embedding them as prose",
+        "Explicitly notes this strategy differs from what a legal/narrative corpus would use (domain determines strategy, no single global default)",
+        "Rejects fixed-character chunking and a generic default-token-size approach"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "cjk-script-aware",
+      "prompt": "We're indexing a few thousand Chinese-language research papers — they've got mixed CJK and English technical terms. How should we configure chunking for these?",
+      "expected_output": "Script-aware splitter, not token-count-based sizing (which is language-biased and mis-sizes CJK). Character-level sizing for CJK segments. NFC normalization recommended for token efficiency. Use structural boundaries (headings, paragraphs) for semantic coherence where present. Token-count-based chunk sizing explicitly rejected as language-biased. Ideally flags that CJK guidance is lower-confidence / should be validated on a CJK query set.",
+      "files": [],
+      "expectations": [
+        "Recommends a script-aware splitter rather than token-count-based chunk sizing",
+        "Explains that token-count sizing is language-biased and systematically mis-sizes CJK content",
+        "Recommends character-level sizing for the CJK segments (and/or NFC normalization)",
+        "Still uses structural boundaries (headings, paragraphs) for coherence where the papers provide them",
+        "Explicitly rejects applying Latin-script-optimized token-count sizing to the CJK text"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "diagnose-before-swapping-model",
+      "prompt": "Our RAG retrieval quality is pretty bad. We're currently chunking everything into fixed 256-token pieces with no overlap. We're thinking the fix is to switch to a better embedding model — does that make sense?",
+      "expected_output": "No — check the chunks first. 256-token fixed-size is the signature of the worst-performing strategy; inspect boundaries for mid-sentence splits. If found, chunking is the root cause, not the embedding model. Recommend a structural-first redesign and measure nDCG on current chunking vs a structural baseline on the SAME model and reranker. Compute chunk-boundary failure rate. Do NOT recommend a model swap until chunking is cleared (misdiagnosing chunking failure as embedding failure).",
+      "files": [],
+      "expectations": [
+        "Advises checking/diagnosing chunk boundaries BEFORE switching embedding models",
+        "Identifies fixed-size (256-token, no overlap) chunking as the likely root cause and inspects for mid-sentence boundaries",
+        "Explains that no embedding model can recover information severed at a bad chunk boundary (chunking is the binding constraint)",
+        "Recommends a structural-first redesign and comparing it against the current chunking on the same model/reranker (vary only chunking)",
+        "Explicitly warns against swapping the embedding model before chunking is ruled out (misdiagnosis of chunking as embedding failure)"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "quantization-validate-chunking-first",
+      "prompt": "We want to roll out int8 quantization to cut our vector storage costs. Our chunking is 512-token structural right now. Benchmarks say int8 keeps like 94-98% recall, so we should be fine to quantize — agree?",
+      "expected_output": "Verify chunking quality first. Measure quantization tolerance on PRODUCTION chunking quality, not academic/MTEB benchmarks — the 94-98% figure is from clean chunks and overstates production tolerance because chunking and quantization losses compound multiplicatively. If chunk-boundary failure rate > 5%, fix chunking before quantizing. If chunk quality is good (low boundary-failure rate, chunks stand alone), int8 is reasonable. Warns about the compound-loss interaction.",
+      "files": [],
+      "expectations": [
+        "Says to verify/validate chunking quality before quantizing",
+        "Warns the 94-98% benchmark figure is measured on clean academic chunks and overstates production tolerance",
+        "Explains that chunking and quantization losses compound multiplicatively (poor chunking amplifies quantization loss)",
+        "Recommends measuring quantization tolerance on the actual production chunking quality, not benchmarks",
+        "Conditions the go/no-go on chunk quality (e.g. fix chunking first if boundary-failure rate is high; int8 acceptable only if chunk quality is good)"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "multi-hop-metadata-defer-pipeline",
+      "prompt": "We're building a RAG system that needs to answer questions pulling information from several documents at once. How should we chunk the documents to support that kind of multi-hop retrieval?",
+      "expected_output": "Chunking enables multi-hop through metadata, it doesn't design the multi-hop loop. Add parent-child links and adjacent-chunk retrieval support to the metadata schema so answers spanning chunks can be reassembled (prevents multi-hop fragmentation). Configure chunk-to-answer traceability to track multi-hop success. State clearly that the multi-hop retrieval methodology (retrieve -> read -> retrieve more) is owned by Retrieval Pipeline Design — flag the assumption and that it must be verified. Does not design the full multi-hop pipeline inside the chunking artifact.",
+      "files": [],
+      "expectations": [
+        "Adds parent-child links and/or adjacent-chunk retrieval support to the chunk metadata schema to reassemble cross-document answers",
+        "Frames the goal as preventing multi-hop fragmentation (answer spans chunks that aren't linked)",
+        "Configures chunk-to-answer traceability / metadata to support tracking multi-hop success",
+        "Defers the multi-hop retrieval pipeline (retrieve -> read -> retrieve more) to [[Retrieval Pipeline Design]] rather than designing it here",
+        "Flags the cross-reference as an assumption to verify (respects the ownership boundary)"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "overlap-is-not-a-cure",
+      "prompt": "Our retrieval keeps missing relevant passages and we think chunks are getting cut off. We're planning to bump our chunk overlap from 10% up to 40% to make sure nothing falls through the cracks. Good plan?",
+      "expected_output": "Pushes back: overlap is insurance, not a cure. If chunks end mid-sentence, 40% overlap just puts the fragment in two chunks — both still fragments. Inspect boundary quality first; if boundaries are bad, fix the strategy (structural-first), don't paper over it with overlap. Flags >20% overlap as a signal that overlap is masking boundary problems. Overlap helps only when boundaries are already good and you want redundant coverage; treat it as a tuning parameter, not a fix.",
+      "files": [],
+      "expectations": [
+        "Pushes back on raising overlap to 40% as the fix, rather than endorsing it",
+        "Explains that overlap masks boundary problems but cannot fix them (a fragment overlapped is still a fragment)",
+        "Recommends inspecting/diagnosing chunk boundary quality first before changing overlap",
+        "Flags >20% overlap as a red flag that overlap is compensating for bad boundaries",
+        "Frames overlap as a tuning parameter for redundant coverage (useful only when boundaries are already good), not a cure for bad chunking"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "semantic-not-the-default",
+      "prompt": "We're chunking our internal engineering docs for search. They're written in Markdown with clear headings and sections. Our plan is to use embedding-based semantic chunking everywhere since it's the most sophisticated option. Sound right?",
+      "expected_output": "Recommends structural-first instead: the docs already have clean Markdown headings and sections — author-supplied semantic segmentation — so parse and use that before reaching for semantic chunking. Semantic chunking is a fallback for when structural markers are absent, not the default; it adds embedding cost/complexity and usually doesn't beat structural-first on structured content. Reserve semantic chunking for the unstructured portions if any. Does not endorse semantic-everywhere on a structured corpus.",
+      "files": [],
+      "expectations": [
+        "Recommends structural-first chunking using the existing Markdown headings/sections rather than semantic chunking everywhere",
+        "Explains that headings/sections are author-supplied semantic boundaries that should be exhausted before inventing new ones",
+        "States that semantic chunking is a fallback (for when structural markers are absent), not the default starting point",
+        "Notes semantic chunking adds cost/complexity and typically does not beat structural-first on already-structured content",
+        "Does NOT endorse defaulting to semantic chunking across the whole structured corpus"
+      ]
+    }
+  ]
+}

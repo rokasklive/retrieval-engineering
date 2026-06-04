@@ -1,0 +1,119 @@
+{
+  "skill_name": "drift-management-and-freshness",
+  "notes": "Evals for the drift-management-and-freshness skill. Prompts are realistic user asks about OPERATING and MAINTAINING an existing retrieval system as it degrades over time (this skill's scope: drift detection, diagnosis, freshness strategy, model-version enforcement, blue-green migration, REINDEX scheduling), not how to design the eval/metrics (Evaluation Operations), tune index hyperparameters (Retrieval Pipeline Design), chunk, or fuse. Evals 1-5 mirror the brief's five required test scenarios (section 11), rewritten as natural user prompts. Evals 6-8 guard this skill's other distinctive behaviors: (6) detecting and stopping an ALREADY-mixed-version index (V25 / cohort isolation), (7) refusing an accidental/undeclared freshness level and forcing an explicit SLA, and (8) ownership-boundary defense — deferring canary DESIGN and hyperparameter tuning to the owning skills rather than improvising them. Each assertion is objectively checkable by a grader reading the design artifact. Run protocol: each prompt once WITH the skill, once WITHOUT (baseline) — see RUN_PROTOCOL.md in the workspace.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "new-system-set-up-drift-monitoring",
+      "prompt": "We just put a new search system into production — about 5 million vectors, HNSW index, roughly 10,000 queries a day. Right now we only have the usual dashboards: latency, error rate, throughput. Can you set up drift monitoring for it so we actually catch it if quality starts slipping?",
+      "expected_output": "Treats establishing baselines as the first job (you can't detect drift without them). Notes standard service monitoring captures no quality regression (Law 8 / V7). Deploys three detection signals: canary-query MRR weekly with >7% w/w trigger (flagging that canary DESIGN is owned by Evaluation Operations, so assume/confirm a set exists), continuous cosine-distribution monitoring (KL >0.1 WARN), and ef_search/nprobe parameter-inflation monitoring vs baseline plus HNSW index-size-vs-live-rows. Adds a non-nullable model_version column. Declares an explicit freshness SLA. Sets a REINDEX cadence (hot weekly / cold quarterly if access skewed). Documents a blue-green procedure for the next model upgrade.",
+      "files": [],
+      "expectations": [
+        "Treats establishing drift baselines (canary MRR, cosine distribution, ef_search/nprobe) as the first/primary step",
+        "States that standard service monitoring (latency, error rate, throughput) does NOT capture retrieval-quality degradation",
+        "Deploys all three detection signals: canary-query MRR, cosine-similarity distribution, and parameter (ef_search/nprobe) inflation",
+        "Sets canary MRR on a weekly cadence with a ~7% week-over-week drop investigation trigger",
+        "Recommends a non-nullable model_version column on the vectors for safe future migration",
+        "Declares an explicit, monitored index freshness SLA (e.g. 'new documents searchable within N seconds')",
+        "Notes that canary query DESIGN is owned by Evaluation Operations while this skill operates the canary set"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "parameter-inflation-not-a-fix",
+      "prompt": "We've been watching ef_search climb on our HNSW index — it was 40 at launch and we've nudged it up to 120 over the last six months to keep recall where we want it. Recall is fine but P99 latency went from about 50ms to 180ms. Should we just set 120 as the new default and move on?",
+      "expected_output": "REJECT making 120 the new default. The 3x inflation is a diagnostic signal that the index is degrading, not a tuning target (Law 4 / Failure V5/V6). Diagnose the root cause: HNSW soft-delete accumulation (index size vs live rows), recall@10 vs exact k-NN (>5% gap confirms index degradation), graph degradation from continuous writes without REINDEX. Remediate with a REINDEX, verify recall returns at ef_search=40, then return ef_search to 40. Adopting 120 freezes the latency hit permanently and lets the root cause keep degrading.",
+      "files": [],
+      "expectations": [
+        "Recommends AGAINST permanently adopting ef_search=120 as the new default/baseline",
+        "Frames the parameter inflation as a diagnostic signal of index degradation, not a tuning solution",
+        "Directs diagnosis of the root cause (e.g. HNSW soft-delete accumulation: index size vs live rows, recall@10 vs exact k-NN, graph degradation from writes)",
+        "Prescribes a REINDEX as the remediation rather than a permanent parameter increase",
+        "Says to verify recall returns to baseline at the original ef_search (40) after REINDEX, and return ef_search to 40",
+        "Notes that permanently inflating the parameter keeps latency elevated while the root cause continues to degrade"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "blue-green-model-migration",
+      "prompt": "We want to upgrade our embedding model from BGE-large-en to BGE-M3. We've got around 10 million vectors in the index. How do we do this without taking search down, and without it blowing up in our faces?",
+      "expected_output": "Prescribes blue-green index deployment: build a new index with BGE-M3 in parallel, validate against canary queries + full eval vs a pre-upgrade baseline, pre-warm caches, atomic alias swap, monitor canary MRR for >=48h, decommission the old index only after. model_version populated distinctly per cohort ('bge-large-en-v1.5' vs 'bge-m3-v1'); never run both models in one ANN index (Failure V25). Rollback trigger: >7% MRR drop -> swap alias back (instant). Flags that canary DESIGN must be confirmed with Evaluation Operations and that detailed 10M+ vector runbooks are deferred to a future Migration & Deployment Operations skill.",
+      "files": [],
+      "expectations": [
+        "Prescribes blue-green index deployment (build new index in parallel, atomic alias swap) for the migration",
+        "Includes validation against a pre-upgrade quality baseline before the swap and monitoring (>=48h) after",
+        "Specifies an instant rollback path via alias swap-back, triggered by an MRR drop (~7%)",
+        "Requires model_version populated distinctly for the old vs new cohort, and warns against mixing both models in one ANN index (V25)",
+        "Includes pre-warming the embedding cache before the alias swap to avoid a cold-start latency spike",
+        "Defers canary query DESIGN to Evaluation Operations and/or large-scale migration runbooks to a future Migration & Deployment Operations skill"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "cosine-shift-without-mrr-drop",
+      "prompt": "Our cosine-similarity monitor just flagged something: the mean query-to-result similarity dropped from 0.82 to 0.71 and the variance jumped from 0.02 to 0.08. But our weekly canary MRR is basically flat — less than 3% change. Is this a problem or noise?",
+      "expected_output": "Investigate, don't panic, but don't ignore it either. A cosine shift without an MRR drop has three live hypotheses: the embedding provider pushed a silent update (geometry moved, quality unchanged), the query distribution shifted, or this is the LEADING INDICATOR and MRR degradation follows in 2-3 weeks. Action: tighten canary cadence and watch closely. If MRR drops next week, the cosine shift was the early warning (exactly why the zero-ground-truth signal exists). If MRR holds for 3+ weeks, recalibrate the cosine baseline to the new distribution. The wrong move is ignoring it entirely.",
+      "files": [],
+      "expectations": [
+        "Advises investigating rather than either ignoring the shift or panicking/rolling back immediately",
+        "Identifies that the cosine shift could be a leading indicator of MRR degradation still to come (2-3 weeks)",
+        "Offers benign alternative explanations: a silent embedding-provider update or a query-distribution shift",
+        "Recommends increasing canary monitoring cadence / watching MRR closely over the next weeks",
+        "Says to recalibrate the cosine baseline to the new distribution if MRR stays stable for several weeks"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "cold-tier-staleness-check",
+      "prompt": "We set up hot/cold tiering a while back — about 200k vectors are hot and get reindexed weekly, and 800k are cold and only get reindexed quarterly. Someone asked me in standup how we know the cold tier hasn't quietly gone stale, and I didn't have a good answer. How should we check?",
+      "expected_output": "Cold-tier staleness sampling: sample ~50 queries that hit cold documents and measure recall against the baseline recorded at tiering time. >95% of baseline = healthy; a >10% recall drop = the cold data drifted and needs reindexing sooner. Monitor cosine distribution on the cold tier separately from hot. The key correction: 'archival' does NOT mean frozen quality — data drifts even without writes when the embedding model or query patterns change, so the cold tier needs its own baseline and its own (quarterly) audit.",
+      "files": [],
+      "expectations": [
+        "Recommends sampling queries against cold-tier documents and measuring recall vs a baseline (quarterly staleness sampling)",
+        "Gives a concrete decision threshold (e.g. recall <95% of baseline, or a >10% drop, triggers earlier reindexing)",
+        "Corrects the assumption that 'archival/cold' means frozen quality — data can drift without writes when the model or query patterns change",
+        "Suggests a cold-tier baseline established at tiering time and monitoring the cold tier separately from the hot tier"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "detect-existing-mixed-version-index",
+      "prompt": "We rolled out a new embedding model a couple months ago by just re-embedding documents as they got updated and writing the new vectors into the same index. Results have felt kind of random since — sometimes great, sometimes nonsense. Latency and error rates are totally normal though. Any idea what's going on?",
+      "expected_output": "Diagnoses a mixed-version index (Failure V25): old and new vectors from different models now coexist in the same ANN index, and search returns geometry-nearest neighbors from BOTH incompatible spaces, so roughly half the results are from the wrong geometry — exactly the 'sometimes great, sometimes nonsense' symptom, invisible to latency/error monitoring. Action: run SELECT model_version, COUNT(*) FROM vectors to confirm multiple versions. STOP further mixed writes. Fix via cohort isolation + a proper blue-green rebuild onto a single model version, with model_version made a non-nullable constraint. Notes cosine similarity across models is geometrically meaningless.",
+      "files": [],
+      "expectations": [
+        "Diagnoses the root cause as a mixed-version index (vectors from two different embedding models in the same ANN index)",
+        "Explains that ANN search returns neighbors from two incompatible geometry spaces, producing the intermittent garbage results",
+        "Notes that this degradation is invisible to standard latency/error-rate monitoring",
+        "Recommends auditing model versions in the index (e.g. SELECT model_version, COUNT(*)) to confirm",
+        "Prescribes cohort isolation and/or a blue-green rebuild onto a single model version as the fix, with model_version enforced as non-nullable"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "undeclared-freshness-sla",
+      "prompt": "Quick question — when we add a new document, how long should it take before it shows up in search results? Right now we just write to the DB and it shows up... eventually, I guess? Nobody's ever actually specified it. Is that fine?",
+      "expected_output": "Not fine as-is: an undeclared freshness level means you've accidentally chosen the engine's default (Law 8 mindset / Pattern Seed 18). The tell is that nobody can answer 'how stale can search results be?' Action: declare a freshness SLA explicitly ('new documents searchable within X seconds'), matched to data velocity and the index's consistency model (PostgreSQL ACID-immediate, Elasticsearch ~1s refresh, CDC at-least-once with propagation delay, materialized views batch/silently-stale). Then monitor actual freshness (last-indexed timestamp vs now, stale-doc count) and alert on SLA violation. Freshness is a choice, not an accident.",
+      "files": [],
+      "expectations": [
+        "States that an unspecified freshness level means the engine's default was chosen by accident, which is not acceptable for production",
+        "Recommends declaring an explicit freshness SLA (e.g. 'new documents searchable within X seconds')",
+        "Ties the achievable freshness to the index's consistency model / data velocity (e.g. ACID-immediate vs ~1s refresh vs CDC propagation vs batch materialized views)",
+        "Recommends monitoring actual freshness (last-indexed vs now / stale-document count) and alerting when the SLA is violated"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "ownership-boundary-defense",
+      "prompt": "While you're setting up our drift monitoring, can you also just design the canary query set for us — pick which queries to use and what the pass threshold should be — and retune our HNSW M and efConstruction parameters so the index is in good shape? Trying to get it all done in one go.",
+      "expected_output": "Sets up the drift monitoring that IS in scope, but declines to improvise the out-of-scope pieces. Canary query DESIGN (which queries, known answers, pass threshold) is owned by Evaluation Operations; HNSW hyperparameter tuning (M, efConstruction, the correct baseline ef_search) is owned by Retrieval Pipeline Design. For each: state the decision isn't this skill's, name the owning skill, state the placeholder assumption it will proceed on (e.g. 'assume a 20-50 query canary set with baseline MRR exists', 'assume ef_search=40 is the tuned baseline'), and flag that both must be verified with the owning skills before implementation. Then proceeds to do what IS in scope: operate the canary set, monitor ef_search inflation against the assumed baseline, enforce model_version.",
+      "files": [],
+      "expectations": [
+        "Declines to design the canary query set itself and attributes canary DESIGN to Evaluation Operations",
+        "Declines to retune HNSW M/efConstruction itself and attributes index hyperparameter tuning to Retrieval Pipeline Design",
+        "States explicit placeholder assumptions it will proceed on (e.g. an existing canary set with baseline MRR; a tuned ef_search baseline) and flags they must be verified",
+        "Still completes the in-scope drift work (e.g. operating the canary set, monitoring parameter inflation against the baseline, enforcing model_version)"
+      ]
+    }
+  ]
+}

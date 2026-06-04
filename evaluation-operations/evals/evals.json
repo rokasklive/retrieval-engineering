@@ -1,0 +1,122 @@
+{
+  "skill_name": "evaluation-operations",
+  "notes": "Evals for the evaluation-operations skill. Prompts are realistic user asks about HOW to evaluate a retrieval/RAG system (this skill's scope: judged set, metrics, coverage, gates, canary design, LLM-judge calibration), not how to design the pipeline/fusion/chunking (other skills). Evals 1-5 mirror the brief's five required test scenarios (section 11), rewritten as natural user prompts. Evals 6-8 guard this skill's other distinctive behaviors: (6) coverage as the meta-metric reported beside every number, (7) metric selection driven by task type rather than defaulting to NDCG, and (8) eval-gated complexity — refusing to bless a new layer with no measured symptom. Each assertion is objectively checkable by a grader reading the design artifact. Run protocol: each prompt once WITH the skill, once WITHOUT (baseline) — see RUN_PROTOCOL.md in the workspace.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "build-eval-from-scratch",
+      "prompt": "We just shipped a search system over about 50,000 internal docs — roughly 1,000 queries a day. Honestly we don't have any evaluation in place, it just seemed to work in our demos so we went live. Can you help us set up evaluation for it?",
+      "expected_output": "Treats establishing a baseline as the first and primary job (no baseline = flying blind). PPS-samples queries from production logs rather than demo queries, classifies them by type, builds a judged set of >=50 queries, pools from >=2 paradigms (BM25 + dense), uses graded relevance, reports Coverage@K, selects NDCG@10 primary / MRR secondary, designs a 20-50 query canary set, and defines the offline-filter -> A/B -> ship pipeline. Flags that 'it worked in demos' is exactly the demo-to-production gap.",
+      "files": [],
+      "expectations": [
+        "Treats establishing an evaluation baseline as the first/primary step before any other change (no baseline = flying blind)",
+        "Samples evaluation queries from real production logs (PPS / representative sampling), explicitly NOT curated demo queries",
+        "Builds a judged set of at least ~50 queries classified by query type (exact identifier, keyword, semantic, entity, typo)",
+        "Constructs the judgment pool from at least 2 retrieval paradigms (e.g. BM25 + dense), not a single source",
+        "Reports Coverage@K alongside the quality metric and records a dated baseline (e.g. NDCG@10 = X, Coverage@10 = Y)",
+        "Flags that 'it worked in our demos' is the demo-to-production gap and not evidence of quality"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "lexical-pool-judging-dense",
+      "prompt": "Our new dense/vector retriever scores worse than our old BM25 on NDCG, so we're about to drop it and stick with BM25. One thing — our relevance judgments were all built from BM25's top results, and our Coverage@10 is about 0.45. Are we making the right call?",
+      "expected_output": "Warns NOT to drop dense yet: a BM25-built pool at 0.45 coverage is structurally rigged against dense (annotation selection bias). Dense finds unjudged docs that count as non-relevant, so it must look worse. Recommends re-pooling from BM25 + dense, re-annotating the top unjudged dense results, getting Coverage@10 above 0.50, and re-measuring. Notes dense suffers 5-10x higher annotation hole rates and routinely jumps 10-30 percentile points after re-annotation. Does not accept the conclusion that dense is worse.",
+      "files": [],
+      "expectations": [
+        "Advises against dropping the dense retriever based on the current comparison",
+        "Identifies the BM25-only judgment pool as biased against dense (annotation selection bias / self-fulfilling pool)",
+        "Flags Coverage@10 = 0.45 as below the 0.50 reliability threshold, making the metrics unreliable for this decision",
+        "Explains that unjudged documents dense finds are counted as non-relevant, so dense is structurally penalized (and may suffer 5-10x higher annotation holes)",
+        "Recommends re-pooling from >=2 paradigms (BM25 + dense) and re-annotating the unjudged top documents, then re-measuring",
+        "Notes dense retrievers often jump substantially (e.g. 10-30 percentile points) after the pool is re-annotated"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "aggregate-green-per-signal-red",
+      "prompt": "We swapped in a new embedding model and our NDCG@10 went from 0.65 to 0.71. We broke it out a bit: semantic-style queries went up to 0.82, but the exact-ID / product-code queries dropped from 0.58 to 0.31. Overall it's clearly up — can we ship it?",
+      "expected_output": "REJECT despite the aggregate improvement. The exact-identifier signal collapsed (0.58 -> 0.31) and is far more than 20% below the aggregate — aggregate green masking per-signal red. The new model trades exact matching for semantic gains, a regression for identifier-bearing queries. Do not ship on the blended number; investigate the exact-ID collapse. Recommends per-signal decomposition as a standing gate.",
+      "files": [],
+      "expectations": [
+        "Recommends NOT shipping despite the aggregate NDCG improvement",
+        "Identifies that the exact-identifier per-signal metric collapsed (0.58 -> 0.31) and is well over 20% below the aggregate",
+        "Explains that an aggregate metric can mask a catastrophic per-signal failure (aggregate green, per-signal red)",
+        "Diagnoses the cause as the new model trading exact-match capability for semantic gains (regression on identifier queries)",
+        "Frames per-signal decomposition by query type as the standing rule/gate that catches this"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "offline-good-ship-decision",
+      "prompt": "We ran our new reranker through our offline evaluation and NDCG@10 improved 8%. That's a solid gain — are we good to ship it to all users?",
+      "expected_output": "Offline is a FILTER, not a DECISION GATE. An 8% offline gain earns an A/B test, not a release. Ship only if business metrics improve with statistical significance online. Cites the offline-online gap / AUC inversion (a better offline model can produce a worse business outcome). If A/B is infeasible, flag the residual risk and maximize offline rigor instead. Does not approve shipping on the offline number alone.",
+      "files": [],
+      "expectations": [
+        "Does NOT approve shipping based on the offline metric improvement alone",
+        "States that offline metrics are filters (block regressions), not decision gates (ship improvements)",
+        "Routes the change to an online A/B test as the next step before shipping",
+        "Conditions shipping on a business-metric improvement with statistical significance",
+        "Cites the offline-online gap / AUC inversion (a better offline model can yield a worse business outcome) as the justification",
+        "If A/B is infeasible, recommends maximizing offline rigor and flagging the residual risk rather than shipping blind"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "uncalibrated-llm-judge",
+      "prompt": "We use GPT-4 as a judge to score the faithfulness of our RAG answers, and it's reporting 0.92. Our generator is also GPT-4. Leadership wants to use that number as our quality bar — is it reliable?",
+      "expected_output": "Not reliable as-is. An uncalibrated LLM judge is lenient on plausible-but-wrong answers, has position bias, and (critically here) self-enhancement bias because the judge and generator are the same model. Requires weekly calibration against a human gold set, a DIFFERENT judge model than the generator, randomized document order, and multi-sample voting. Human correlation below ~0.85 means it can't gate decisions. The 0.92 is unverified until calibrated.",
+      "files": [],
+      "expectations": [
+        "States the 0.92 is unverified / not reliable as a quality bar without calibration",
+        "Flags self-enhancement bias specifically because the judge (GPT-4) is the same model as the generator (GPT-4)",
+        "Lists LLM-judge blind spots: leniency on plausible-but-wrong answers and position bias (prefers first result)",
+        "Requires weekly calibration against a human gold set of relevance/faithfulness judgments",
+        "Recommends using a different judge model than the generator, randomizing document order, and multi-sample voting",
+        "Sets a human-correlation threshold (e.g. ~0.85) below which the judge cannot be used to gate decisions"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "metric-without-coverage",
+      "prompt": "Quick sanity check on our eval report. We track NDCG@10 weekly and it's been steady at around 0.70 for two months, so quality looks stable. But users have started complaining that search got worse. The numbers say we're fine — what are we missing?",
+      "expected_output": "Asks for Coverage@K, which is almost certainly missing from the report. A steady NDCG with no coverage number is not a trustworthy result: if coverage is dropping (query distribution shifting, new docs unjudged), the metric can look stable while real quality decays. Coverage is the meta-metric and must be reported beside every metric; below 0.50 the metric is unreliable. Recommends measuring coverage and its trend, re-pooling/re-annotating, and adding canary-query MRR as a continuous signal that catches positional degradation standard metrics miss.",
+      "files": [],
+      "expectations": [
+        "Identifies that Coverage@K is missing from the report and must be reported alongside the metric",
+        "Explains that a stable NDCG can hide declining quality when coverage is falling (unjudged docs / shifting distribution)",
+        "Frames coverage as the meta-metric that determines whether the other metrics are trustworthy (and <0.50 = unreliable)",
+        "Recommends measuring the coverage trend and re-pooling / re-annotating to restore it",
+        "Suggests canary-query MRR as a continuous signal that catches positional degradation standard monitoring misses"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "metric-selection-known-item",
+      "prompt": "We're standing up evaluation for an internal tool search — people type the name of a tool or an error code and there's basically one correct page they're trying to land on. We were going to use NDCG@10 since that's what everyone uses. Is that the right metric?",
+      "expected_output": "NDCG is a poor fit here: this is known-item / navigational search with a single correct answer, so MRR (with P@1 secondary) is the right primary metric — it measures how high the one correct page ranks. NDCG assumes graded relevance across multiple relevant docs, which doesn't match a single-target task. Drives metric choice from task type, not convention. May also note exact identifiers/error codes need a lexical path (cross-ref to pipeline/hybrid) but keeps the focus on metric selection.",
+      "files": [],
+      "expectations": [
+        "Recommends MRR (with P@1 as secondary) rather than NDCG@10 as the primary metric",
+        "Identifies the task as known-item / navigational search with a single correct answer",
+        "Explains that NDCG assumes graded relevance across multiple relevant documents, which doesn't fit a single-target task",
+        "Drives the metric choice from the task type rather than from convention ('that's what everyone uses')"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "eval-gated-complexity",
+      "prompt": "We're about to add a cross-encoder reranker and a query-rewriting step to our retrieval stack — it's what all the production RAG best-practice posts recommend, so we want both in before launch. Sound good?",
+      "expected_output": "Eval-gate it. 'Best practice' is not a measured symptom. Each layer must be justified by an observed failure in the current system, measured against a baseline — so the move is: establish the baseline first, identify the specific failure pattern each layer would target, add one layer, measure its marginal contribution, keep it only if it earned its latency. Warns against deploying all layers from scratch (adds latency and operational complexity for unproven gain) and against launching with no baseline at all. Notes the architecture decision itself is owned by retrieval-pipeline-design; the eval discipline gating it is this skill's.",
+      "expectations": [
+        "Does NOT endorse adding both layers just because they are 'best practice'",
+        "Requires each layer to be justified by an observed, measured failure pattern in the current system (eval-gated complexity)",
+        "Insists on establishing a baseline first, then measuring each layer's marginal contribution before keeping it",
+        "Warns against deploying all layers from scratch (added latency/operational complexity for unproven gain)",
+        "Cross-references that the architecture decision is owned by [[Retrieval Pipeline Design]] while the eval discipline is this skill's",
+        "Recommends adding layers incrementally (one at a time), keeping a layer only if it earns its cost"
+      ],
+      "files": []
+    }
+  ]
+}

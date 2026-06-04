@@ -1,0 +1,117 @@
+{
+  "skill_name": "hybrid-search-architecture",
+  "notes": "Evals for the hybrid-search-architecture skill. Prompts are realistic user asks about HOW to fuse/route multi-path retrieval (this skill's scope), not WHETHER to go hybrid (that's retrieval-pipeline-design). Evals 1-6 mirror the brief's six required test scenarios (section 11), rewritten as natural user prompts. Evals 7-8 are guards against this skill's two most distinctive 2026 behaviors: (7) not treating RRF as universally optimal when labeled data exists (CC upgrade, per-source weights), and (8) the agent-facing confidence interface (never expose raw cross-retriever scores). Each assertion is objectively checkable by a grader reading the design artifact. Run protocol: each prompt once WITH the skill, once WITHOUT (baseline) — see RUN_PROTOCOL.md in the workspace.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "dense-only-exact-identifiers",
+      "prompt": "We're building search over our product catalog and internal logs. The plan is to embed everything and do pure vector similarity search in Pinecone. A lot of the real queries are things like 'find SKU DQ4312-101' or 'error ERR_TIMEOUT in the logs'. Does this plan hold up, and if not how should I combine retrievers?",
+      "expected_output": "Flags that dense-only will fail on the exact-identifier queries (SKUs, error codes), cites exact-identifier blindness (the embedder has no representation for unseen identifiers, adjacent SKUs collapse), requires adding a BM25/lexical leg (hybrid), and routes identifier-bearing queries to the lexical path only.",
+      "files": [],
+      "expectations": [
+        "Flags that pure dense/vector search will fail on the exact-identifier queries (SKUs, error codes)",
+        "Explains the cause: embedding models treat unseen identifiers as noise / exact-identifier blindness (adjacent identifiers collapse in embedding space)",
+        "Requires adding a BM25/lexical leg, i.e. a hybrid two-path design rather than dense-only",
+        "Recommends routing exact-identifier queries to the BM25/lexical path only (skip dense for those)",
+        "References the complementarity of lexical and dense (they fail in opposite directions) as the justification"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "raw-score-fusion",
+      "prompt": "For our hybrid search we're going to combine the BM25 score and the cosine similarity with a weighted sum — final_score = 0.6*bm25 + 0.4*cosine — and sort by that. Does that sound like a reasonable way to fuse the two?",
+      "expected_output": "Flags score incompatibility between BM25 (unbounded, long-tailed) and cosine ([-1,1], bunched near 0) and that the tuned weights break on the next model upgrade; recommends RRF (k=60) as the rank-based default; requires calibrated + monitored score distributions if the user insists on score-level fusion.",
+      "files": [],
+      "expectations": [
+        "Flags that BM25 scores and cosine similarities are incompatible (different ranges/distributions) and cannot be linearly combined safely",
+        "Explains that score normalization/weighting is fragile and breaks silently on model upgrades or distribution shifts",
+        "Recommends Reciprocal Rank Fusion (RRF), ideally with k=60, as the default rank-based fusion method",
+        "States that score-level fusion is only acceptable with calibrated, stable, and monitored score distributions",
+        "Frames the recommendation as ranks-over-scores (the choice is the default, RRF sidesteps the incompatibility entirely)"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "third-path-no-complementarity",
+      "prompt": "We have a BM25 + dense hybrid working today. Someone on the team wants to add SPLADE as a third retrieval path because 'three signals are better than two'. Should we add it?",
+      "expected_output": "Blocks the path addition until complementarity is measured; requires computing RoC — what unique relevant documents SPLADE contributes beyond BM25+dense; warns that if overlap with dense exceeds ~50% of the union the path is redundant (pure latency/ops cost); cites the complementarity law and rejects the 'more is better' argument.",
+      "files": [],
+      "expectations": [
+        "Does NOT endorse adding the third path on the 'more signals is better' argument; blocks it pending evidence",
+        "Requires measuring complementarity (RoC): what relevant documents SPLADE uniquely contributes that BM25+dense miss",
+        "States that high overlap with an existing path (e.g. >~50% of the union, or RoC below ~0.10) means the path is redundant and should be rejected",
+        "Notes the cost of a redundant path: added latency and operational complexity for zero quality gain",
+        "Justifies via complementarity (a path's value is its unique contribution, not its standalone quality), not completeness"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "hybrid-below-best-single",
+      "prompt": "Our BM25 + dense hybrid gets NDCG@10 = 0.42, but dense-only alone gets 0.47. Hybrid is supposed to be better than either path — what's going on and how do I fix it?",
+      "expected_output": "Diagnoses a fusion-quality-floor violation (fused below best single path) as the weakest-link law: a path is injecting noise. Recommends disabling the suspect (BM25) path and re-measuring; if dense-only quality recovers, BM25 lacks complementarity for this corpus/query mix — remove it or route it only to the query classes where it helps. Does not reflexively blame the reranker.",
+      "files": [],
+      "expectations": [
+        "Identifies that fused quality below the best single path means a path is injecting noise (weakest-link / poisoned candidate pool)",
+        "Recommends isolating the culprit by disabling the suspect path (BM25) and re-measuring fused vs single-path quality",
+        "States that if quality recovers when the path is removed, that path lacks complementarity and should be removed or down-weighted",
+        "Suggests a per-query-class breakdown or routing fix (a path harmful to one class but helpful to another should be routed, not necessarily removed everywhere)",
+        "Frames 'fused must be >= best single path' as the verification checkpoint that should gate the design"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "unpinned-vendor-fusiontype",
+      "prompt": "We run hybrid search on Weaviate and just use the default fusion — we never set fusionType or any of the fusion parameters explicitly. Our results recently got worse and we're not sure why. Is leaving the defaults a problem?",
+      "expected_output": "Flags the vendor-default-drift risk: Weaviate changed its default fusionType across a version upgrade (v1.24, rankedFusion -> relativeScoreFusion) silently, which can degrade quality with no error. Requires pinning fusionType, k, and ef explicitly, and auditing fusion parameters after any vendor version upgrade as the likely cause of the regression.",
+      "files": [],
+      "expectations": [
+        "Identifies unpinned vendor defaults as the likely cause of the silent quality regression",
+        "Explains that the vendor changed its default fusionType across a version upgrade silently (Weaviate v1.24: rankedFusion -> relativeScoreFusion), with no error surfaced",
+        "Requires pinning fusionType (and k, ef, similarity metric) explicitly rather than relying on defaults",
+        "Recommends auditing fusion parameters after any vendor version upgrade",
+        "Connects the silent change to quality dropping below the best single path / harder-to-detect degradation"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "pre-fusion-metadata-filter",
+      "prompt": "In our hybrid pipeline we apply the category metadata filter on the dense retriever's results first, and then fuse those with the BM25 results. We figured filtering early is more efficient. Anything wrong with that ordering?",
+      "expected_output": "Flags that pre-fusion filtering on one path silently discards the complementary path's matching documents — BM25 may have found category-matching docs that the dense path ranked poorly and that get dropped. Recommends post-filtering: fuse BM25 + dense first, then apply the category filter to the combined pool. Filter after fusion, before any reranker.",
+      "files": [],
+      "expectations": [
+        "Flags that filtering one path's output before fusion silently discards relevant documents the other (complementary) path would have surfaced",
+        "Recommends fusing all paths first, then applying the metadata filter to the combined candidate pool (post-filter after fusion)",
+        "States the placement rule: filter after fusion and before the reranker (post-filter is the default)",
+        "Explains that post-filtering preserves recall from every path (and that pre-filtering risks overshrinking the pool)"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "labeled-data-cc-upgrade",
+      "prompt": "Our RRF-based hybrid (BM25 + dense, k=60) is solid but we want to squeeze out more quality. We've built up a judged set of about 200 labeled queries from production. We were thinking of grid-searching the RRF k value across the retrievers. Is tuning k the best use of that labeled data?",
+      "expected_output": "Should NOT treat RRF/k-tuning as the ceiling. With ~200 labeled queries, recommends evaluating convex combination (CC) as a superior alternative that consistently outperforms RRF and is sample-efficient — keeping RRF as the zero-shot default. Notes that per-source weights matter more than global k tuning, so tune per-retriever weights before (or instead of) grid-searching k. Should keep RRF as the safe default while testing CC against the labeled baseline.",
+      "files": [],
+      "expectations": [
+        "Does NOT treat RRF or global-k tuning as the optimal ceiling; recognizes labeled data unlocks better options",
+        "Recommends evaluating convex combination (CC) as a superior alternative to RRF given the labeled data (consistently outperforms RRF, sample-efficient at ~100 queries)",
+        "States that per-source / per-retriever weights matter more than tuning the global RRF k value",
+        "Advises tuning per-source weights before spending effort grid-searching k",
+        "Frames RRF as the zero-shot default to keep as a baseline while CC is evaluated against the judged set"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "agent-facing-confidence",
+      "prompt": "Our retrieval results from a hybrid (BM25 + dense, fused) get handed to an LLM agent that decides whether it has enough context to answer. We want the agent to know how confident each result is, so we were going to pass the raw fusion scores through to it. Good idea?",
+      "expected_output": "Warns against exposing raw cross-retriever/fusion scores to the agent — they're incomparable (a BM25 18.3 vs a cosine 0.92 share no meaning) and the agent will over-trust the bigger number. Recommends relative confidence signals instead: the normalized top-gap c(q)=(s0-s1)/s0, per-result source tagging (found via exact match vs semantic similarity), and per-result uncertainty flags. May note the score gap can also drive a confidence cascade.",
+      "files": [],
+      "expectations": [
+        "Advises against exposing raw cross-retriever / fusion scores to the agent as confidence",
+        "Explains that scores from different paths (BM25 vs cosine) are incomparable, so the agent will over-trust the larger raw number",
+        "Recommends a relative confidence signal such as the normalized top-1-vs-top-2 score gap c(q)=(s0-s1)/s0",
+        "Recommends source-tagging each result (e.g. 'found via exact match' vs 'via semantic similarity') and/or per-result uncertainty flags",
+        "Frames confidence in relative terms rather than absolute scores"
+      ]
+    }
+  ]
+}
