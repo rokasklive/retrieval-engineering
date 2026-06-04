@@ -1,7 +1,9 @@
 # Eval Results — Retrieval Engineering
 
-> Generated: 2026-06-04 15:24 UTC
+> Generated: 2026-06-04 15:28 UTC
 > Repository: [https://github.com/rokasklive/retrieval-engineering](https://github.com/rokasklive/retrieval-engineering)
+
+> **Note on benchmarks**: These scores track trajectory, not final quality. The eval set is small by design — definitive claims would require substantially more volume. Interpret these as directional signal, not a certificate.
 
 ## Aggregate Scores
 
@@ -18,7 +20,7 @@
 ## Changes Since Last Export
 
 Previous: 2026-06-04 15:15 UTC
-Current:  2026-06-04 15:15 UTC
+Current:  2026-06-04 15:24 UTC
 
 | Skill | Previous (w/o skill) | Current (w/o skill) | Δ |
 |-------|----------------------|---------------------|---|
@@ -117,3 +119,4 @@ Current:  2026-06-04 15:15 UTC
 | 2026-06-04 15:14 UTC | 5 | Update — 5 skills |
 | 2026-06-04 15:15 UTC | 5 | Update — 5 skills |
 | 2026-06-04 15:15 UTC | 5 | Update — 5 skills |
+| 2026-06-04 15:24 UTC | 5 | Update — 5 skills |
