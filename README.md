@@ -18,11 +18,11 @@ This is not settled science, a formal academic result, or a claim of best practi
 
 | Skill | Purpose |
 |-------|---------|
-| **[Chunking Strategy Design](skills/chunking-strategy-design/)** | Where to place chunk boundaries, what size and overlap, and how to validate chunk quality before tuning anything downstream. |
-| **[Drift Management And Freshness](skills/drift-management-and-freshness/)** | Detecting embedding drift and index decay, enforcing model versions, and keeping production search from degrading. |
-| **[Evaluation Operations](skills/evaluation-operations/)** | Building judged sets, picking the right metric, detecting when metrics lie, and gating whether a change ships. |
-| **[Hybrid Search Architecture](skills/hybrid-search-architecture/)** | How to fuse lexical and dense results, choose fusion methods, and route queries to the right retrieval path. |
-| **[Retrieval Pipeline Design](skills/retrieval-pipeline-design/)** | When dense, lexical, or hybrid retrieval is justified; when a reranker helps; how many retrieval stages you actually need. |
+| **[Chunking Strategy Design](https://github.com/rokasklive/retrieval-engineering/tree/main/skills/chunking-strategy-design/)** | Where to place chunk boundaries, what size and overlap, and how to validate chunk quality before tuning anything downstream. |
+| **[Drift Management And Freshness](https://github.com/rokasklive/retrieval-engineering/tree/main/skills/drift-management-and-freshness/)** | Detecting embedding drift and index decay, enforcing model versions, and keeping production search from degrading. |
+| **[Evaluation Operations](https://github.com/rokasklive/retrieval-engineering/tree/main/skills/evaluation-operations/)** | Building judged sets, picking the right metric, detecting when metrics lie, and gating whether a change ships. |
+| **[Hybrid Search Architecture](https://github.com/rokasklive/retrieval-engineering/tree/main/skills/hybrid-search-architecture/)** | How to fuse lexical and dense results, choose fusion methods, and route queries to the right retrieval path. |
+| **[Retrieval Pipeline Design](https://github.com/rokasklive/retrieval-engineering/tree/main/skills/retrieval-pipeline-design/)** | When dense, lexical, or hybrid retrieval is justified; when a reranker helps; how many retrieval stages you actually need. |
 
 ## Eval Results
 
