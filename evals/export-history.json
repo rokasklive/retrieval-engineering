@@ -182,5 +182,51 @@
       }
     },
     "notes": "Update \u2014 5 skills"
+  },
+  {
+    "date": "2026-06-04 15:24 UTC",
+    "timestamp_iso": "2026-06-04T15:24:32.715632+00:00",
+    "source_commit": "b16252c",
+    "dest_commit": "214104f",
+    "skills_exported": [
+      "chunking-strategy-design",
+      "drift-management-and-freshness",
+      "evaluation-operations",
+      "hybrid-search-architecture",
+      "retrieval-pipeline-design"
+    ],
+    "scores": {
+      "chunking-strategy-design": {
+        "with_skill_pct": 100.0,
+        "without_skill_pct": 84.1,
+        "delta_pp": 15.9,
+        "total_assertions": 41
+      },
+      "drift-management-and-freshness": {
+        "with_skill_pct": 100.0,
+        "without_skill_pct": 48.8,
+        "delta_pp": 51.2,
+        "total_assertions": 41
+      },
+      "evaluation-operations": {
+        "with_skill_pct": 100.0,
+        "without_skill_pct": 83.0,
+        "delta_pp": 17.0,
+        "total_assertions": 44
+      },
+      "hybrid-search-architecture": {
+        "with_skill_pct": 100.0,
+        "without_skill_pct": 85.9,
+        "delta_pp": 14.1,
+        "total_assertions": 39
+      },
+      "retrieval-pipeline-design": {
+        "with_skill_pct": 100.0,
+        "without_skill_pct": 92.9,
+        "delta_pp": 7.1,
+        "total_assertions": 42
+      }
+    },
+    "notes": "Update \u2014 5 skills"
   }
 ]

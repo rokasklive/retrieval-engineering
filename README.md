@@ -2,6 +2,8 @@
 
 > Distilled skills for AI agents building production search pipelines.
 
+[![skills.sh](https://skills.sh/b/rokasklive/retrieval-engineering)](https://skills.sh/rokasklive/retrieval-engineering)
+
 ## About
 
 These skills were methodically synthesized from a focused corpus of literature — research papers, engineering blogs, and published media on semantic search, retrieval, and RAG systems — as part of an amateur research effort.
@@ -12,7 +14,7 @@ This is not settled science, a formal academic result, or a claim of best practi
 
 > **Note**: These skills are designed for the **design and verification phases** of search system development. They prioritize correctness, traceability, and thoroughness — expect higher token usage and longer runtimes than general-purpose skills. Token cost and latency were not design constraints.
 
-**Generated**: 2026-06-04 15:15 UTC
+**Generated**: 2026-06-04 15:24 UTC
 
 ## Skills
 
