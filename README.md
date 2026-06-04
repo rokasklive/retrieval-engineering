@@ -1,7 +1,6 @@
 # Retrieval Engineering
 
 > Distilled skills for AI agents building production search pipelines.
-> [https://github.com/rokasklive/retrieval-engineering](https://github.com/rokasklive/retrieval-engineering)
 
 ## About
 
@@ -13,7 +12,7 @@ This is not settled science, a formal academic result, or a claim of best practi
 
 > **Note**: These skills are designed for the **design and verification phases** of search system development. They prioritize correctness, traceability, and thoroughness — expect higher token usage and longer runtimes than general-purpose skills. Token cost and latency were not design constraints.
 
-**Generated**: 2026-06-04 15:14 UTC
+**Generated**: 2026-06-04 15:15 UTC
 
 ## Skills
 
