@@ -13,17 +13,17 @@ This is not settled science, a formal academic result, or a claim of best practi
 
 > **Note**: These skills are designed for the **design and verification phases** of search system development. They prioritize correctness, traceability, and thoroughness — expect higher token usage and longer runtimes than general-purpose skills. Token cost and latency were not design constraints.
 
-**Generated**: 2026-06-04 15:07 UTC
+**Generated**: 2026-06-04 15:14 UTC
 
 ## Skills
 
 | Skill | Purpose |
 |-------|---------|
-| **[Chunking Strategy Design](chunking-strategy-design/)** | Where to place chunk boundaries, what size and overlap, and how to validate chunk quality before tuning anything downstream. |
-| **[Drift Management And Freshness](drift-management-and-freshness/)** | Detecting embedding drift and index decay, enforcing model versions, and keeping production search from degrading. |
-| **[Evaluation Operations](evaluation-operations/)** | Building judged sets, picking the right metric, detecting when metrics lie, and gating whether a change ships. |
-| **[Hybrid Search Architecture](hybrid-search-architecture/)** | How to fuse lexical and dense results, choose fusion methods, and route queries to the right retrieval path. |
-| **[Retrieval Pipeline Design](retrieval-pipeline-design/)** | When dense, lexical, or hybrid retrieval is justified; when a reranker helps; how many retrieval stages you actually need. |
+| **[Chunking Strategy Design](skills/chunking-strategy-design/)** | Where to place chunk boundaries, what size and overlap, and how to validate chunk quality before tuning anything downstream. |
+| **[Drift Management And Freshness](skills/drift-management-and-freshness/)** | Detecting embedding drift and index decay, enforcing model versions, and keeping production search from degrading. |
+| **[Evaluation Operations](skills/evaluation-operations/)** | Building judged sets, picking the right metric, detecting when metrics lie, and gating whether a change ships. |
+| **[Hybrid Search Architecture](skills/hybrid-search-architecture/)** | How to fuse lexical and dense results, choose fusion methods, and route queries to the right retrieval path. |
+| **[Retrieval Pipeline Design](skills/retrieval-pipeline-design/)** | When dense, lexical, or hybrid retrieval is justified; when a reranker helps; how many retrieval stages you actually need. |
 
 ## Eval Results
 

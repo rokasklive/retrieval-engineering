@@ -1,6 +1,6 @@
 # Eval Results — Retrieval Engineering
 
-> Generated: 2026-06-04 15:07 UTC
+> Generated: 2026-06-04 15:14 UTC
 > Repository: [https://github.com/rokasklive/retrieval-engineering](https://github.com/rokasklive/retrieval-engineering)
 
 ## Aggregate Scores
@@ -14,19 +14,6 @@
 | **retrieval-pipeline-design** | 100.0% | 92.9% | +7.1 | 42 |
 
 **Overall**: 100% with-skill across 207 assertions. Without-skill (weighted avg): 79.0%.
-
-## Changes Since Last Export
-
-Previous: 2026-06-04 15:06 UTC
-Current:  2026-06-04 15:06 UTC
-
-| Skill | Previous (w/o skill) | Current (w/o skill) | Δ |
-|-------|----------------------|---------------------|---|
-| chunking-strategy-design | 84.1% | 84.1% | +0.0pp |
-| drift-management-and-freshness | 48.8% | 48.8% | +0.0pp |
-| evaluation-operations | 83.0% | 83.0% | +0.0pp |
-| hybrid-search-architecture | 85.9% | 85.9% | +0.0pp |
-| retrieval-pipeline-design | 92.9% | 92.9% | +0.0pp |
 
 ## Per-Skill Breakdown
 
@@ -113,11 +100,4 @@ Current:  2026-06-04 15:06 UTC
 
 | Date | Skills Exported | Notes |
 |------|----------------|-------|
-| 2026-06-04 14:46 UTC | 5 | Initial export |
-| 2026-06-04 14:46 UTC | 5 | Update — 5 skills |
-| 2026-06-04 14:53 UTC | 5 | Update — 5 skills |
-| 2026-06-04 14:55 UTC | 5 | Update — 5 skills |
-| 2026-06-04 14:59 UTC | 5 | Update — 5 skills |
-| 2026-06-04 15:01 UTC | 5 | Update — 5 skills |
-| 2026-06-04 15:06 UTC | 5 | Update — 5 skills |
-| 2026-06-04 15:06 UTC | 5 | Update — 5 skills |
+| 2026-06-04 15:07 UTC | 5 | Update — 5 skills |
