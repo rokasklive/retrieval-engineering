@@ -1,20 +1,16 @@
 ---
 name: hybrid-search-architecture
 description: >
-  Design, tune, and diagnose multi-path retrieval that fuses lexical (BM25),
-  dense, sparse, and fuzzy retrievers — choosing the fusion method (RRF vs
-  weighted RRF vs score-level vs CC), routing queries to paths, placing metadata
-  filters, and exposing confidence to agents. Use whenever combining retrievers:
-  fusing BM25 and vector results, choosing RRF or weighted scores, diagnosing
-  hybrid worse than a single path, adding SPLADE as a third path, handling
-  Weaviate/Elasticsearch hybrid breaking after upgrades, or surfacing confidence
-  to an LLM downstream. Trigger on any proposal to weight, blend, normalize, or
-  rank-combine results from multiple retrievers, or diagnose a hybrid system
-  underperforming a single path. Owns fusion method selection, query-adaptive
-  routing, complementarity measurement, metadata filter placement, per-path
-  health monitoring, and agent-facing confidence signals. Does NOT decide if
-  hybrid is needed (Retrieval Pipeline Design), pick rerankers, design chunks,
-  or build the eval program.
+  Design, tune, and diagnose multi-path retrieval systems that fuse lexical, 
+  dense, sparse, and fuzzy retrieval. Use when combining retrievers and deciding how: 
+  BM25 + vector fusion, RRF vs weighted RRF vs score-level fusion, query routing, path 
+  count, metadata filter placement, SPLADE/third-path additions, reranker/fusion value, 
+  hybrid underperformance, odd Weaviate/Elasticsearch behavior after upgrades, or 
+  confidence signals for agents. Trigger even without “fusion”: any proposal to weight, 
+  blend, normalize, or rank-combine results from multiple retrievers is in scope, especially 
+  when hybrid search performs worse than a single path. Owns fusion strategy and routing. 
+  Does not decide whether hybrid is needed, choose rerankers, design chunks, or build the 
+  evaluation program.
 ---
 
 # Hybrid Search Architecture

@@ -1,19 +1,15 @@
 ---
 name: chunking-strategy-design
 description: >
-  Select, configure, and validate document chunking strategies for search/RAG —
-  where to place boundaries, what size and overlap, what metadata, and how to
-  prove chunks are good before tuning anything downstream. Use whenever deciding
-  how to split documents: choosing chunk size/overlap, designing strategies for
-  legal/product/CJK corpora, diagnosing retrieval quality that might be a
-  chunking problem, setting up chunking for product search, or evaluating whether
-  fixed-size, semantic, or structural splitting is right. Trigger on any proposal
-  that sets a chunk size, picks a splitting method, adds overlap, or blames the
-  embedding model for poor retrieval — chunking is the binding constraint and
-  must be checked first. Owns boundary placement, size/overlap configuration,
-  structure- and script-aware splitting, chunk metadata schema, and chunk-quality
-  validation. Does NOT implement splitter code, select embedding models or
-  rerankers, design fusion, or own the evaluation program.
+  Select, configure, and validate document chunking for search/retrieval/RAG systems: boundary placement, 
+  chunk size, overlap, metadata, and proof that chunking works before downstream tuning. Use when 
+  designing document splitting, diagnosing retrieval quality, or evaluating questions like chunk size, 
+  fixed vs semantic vs structural splitting, overlap, legal/product/CJK corpora, multi-hop RAG, product 
+  search, poor chunks causing wrong answers, or whether bad retrieval is really an embedding-model issue. 
+  Trigger even when “chunking” is not mentioned: any proposal involving split strategy, chunk size, overlap, 
+  or retrieval failures is in scope. Owns boundary placement, size/overlap, structure- and script-aware splitting, 
+  chunk metadata, and chunk-quality validation. Does not implement splitter code, choose embeddings/rerankers, 
+  design fusion, or own the broader evaluation program.
 ---
 
 # Chunking Strategy Design

@@ -1,19 +1,16 @@
 ---
 name: drift-management-and-freshness
 description: >
-  Detect and fix production search quality decay before users notice — embedding
-  drift, index decay, and staleness silently erode MRR with zero alerts. Use
-  whenever operating a live retrieval system showing degradation: MRR dropping
-  unnoticed, ef_search/nprobe creeping up to hold recall, model upgrades mixing
-  vectors from different models, cosine similarity shifting, latency climbing,
-  or questions about reindex cadence, freshness SLAs, blue-green model migration,
-  hot/cold tiering, or drift monitoring setup. Trigger on any proposal to raise
-  ef_search as a permanent fix, swap embedding models in production, schedule
-  REINDEX, mix vectors from different models, or declare freshness without
-  monitoring. Owns drift baselines, three-signal detection, diagnosis,
-  model-version enforcement, blue-green migration, REINDEX scheduling, and
-  freshness strategy. Does NOT own canary design (Evaluation Operations), index
-  parameter tuning (Retrieval Pipeline Design), chunking, or fusion.
+  Detect, diagnose, and remediate production retrieval quality degradation over time: 
+  embedding drift, ANN index decay, evaluation staleness, and index freshness as 
+  data/models change. Use when an existing search/RAG system may be worsening: sliding quality, 
+  MRR drops, creeping latency, stale results, cosine similarity shifts, model upgrades, 
+  re-embedding decisions, blue-green index swaps, REINDEX cadence, cold-tier freshness, or drift 
+  monitoring. Trigger even without “drift”: proposals to raise ef_search/nprobe, swap embedding models, 
+  mix vectors from different models, schedule reindexing, or rely only on latency/error dashboards while 
+  users report worse answers are in scope. Owns detection, diagnosis, freshness strategy, model-version 
+  enforcement, blue-green migration, and REINDEX scheduling. Does not design eval methodology, 
+  canary queries, index hyperparameter tuning, chunking, fusion, or monitoring dashboards.
 ---
 
 # Drift Management & Freshness

@@ -1,20 +1,18 @@
 ---
 name: evaluation-operations
 description: >
-  Design and operate evaluation for a search/retrieval/RAG system — the judged
-  set, metrics, and gates that prove changes actually help. Use whenever setting
-  up, auditing, or debating how retrieval quality is measured: building a judged
-  set, choosing NDCG vs MRR vs MAP vs ERR, deciding if Coverage@K matters,
-  trusting GPT-4 as a judge, interpreting offline metrics, picking canary
-  queries, decomposing aggregate NDCG into per-signal breakdowns, or knowing if
-  a retrieval change really improved things. Trigger on any proposal to compare
-  two retrieval configurations, ship on an offline metric alone, treat unjudged
-  docs as irrelevant, or trust an eval that looks healthy while users complain.
-  Owns judged-set construction (multi-paradigm pooling), metric selection,
-  Coverage@K enforcement, before/after methodology, canary query design,
-  LLM-as-Judge calibration, and offline-to-online validation pipeline. Does NOT
-  operate canaries in production (Drift Management), design pipelines or
-  chunking, or define business metrics.
+  Design and operate the evaluation program for a search/retrieval/RAG system: 
+  judged sets, metrics, coverage, and release gates. Use when setting up, auditing, 
+  or debating retrieval measurement: judged-set construction, NDCG/MRR/MAP/ERR, 
+  Coverage@K, dense vs BM25 comparisons, GPT/LLM-as-judge reliability, offline 
+  metric gains, canary query design, or deciding whether a retrieval change helped 
+  enough to ship. Trigger even without “evaluation”: comparing retrieval configs, 
+  trusting offline numbers, treating unjudged docs as irrelevant, shipping on 
+  offline metrics alone, or diagnosing healthy-looking evals while users complain 
+  are in scope. Owns judged set design, metric choice, coverage, before/after 
+  methodology, canary design, and LLM-as-judge calibration. Does not operate 
+  production canaries, run A/B infrastructure, design pipeline/fusion/chunking,
+  or define business metrics.
 ---
 
 # Evaluation Operations
