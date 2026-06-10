@@ -1,0 +1,28 @@
+# Secrets and credentials
+.env
+.env.*
+*.key
+*.pem
+secret*
+secrets/
+
+# OS / editor artifacts
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.tsproc
+
+# Eval run output (if future eval harnesses produce artifacts)
+evals/run-*
+evals/outputs/
+evals/results/
+
+# Node (if eval tooling ever uses it)
+node_modules/
+package-lock.json
